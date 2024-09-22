@@ -61,6 +61,7 @@ int allocate_shm_file(size_t size) {
 static void buffer_release(void *data, struct wl_buffer *wl_buffer) {
 	struct pool_buffer *buffer = data;
 	buffer->busy = false;
+    fprintf(stderr, "BUFR\n");
 }
 
 static const struct wl_buffer_listener buffer_listener = {
@@ -140,5 +141,6 @@ struct pool_buffer *get_next_buffer(struct wl_shm *shm,
 		}
 	}
 	buffer->busy = true;
+    fprintf(stderr, "BUF\n");
 	return buffer;
 }

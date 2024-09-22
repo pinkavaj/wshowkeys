@@ -157,23 +157,29 @@ static void render_frame(struct wsk_state *state) {
 	render_to_cairo(cairo, state, scale, &width, &height);
 	if (height / scale != state->height
 			|| width / scale != state->width
-			|| state->width == 0) {
+			|| state->width == 0 || state->height == 0 || width == 0 || height == 0) {
 		// Reconfigure surface
 		if (width == 0 || height == 0) {
+            state->height = 0;
+            state->width = 0;
 			wl_surface_attach(state->surface, NULL, 0, 0);
+            fprintf(stderr, "Z\n");
 		} else {
 			zwlr_layer_surface_v1_set_size(
 					state->layer_surface, width / scale, height / scale);
+            fprintf(stderr, "R\n");
 		}
 
 		// TODO: this could infinite loop if the compositor assigns us a
 		// different height than what we asked for
 		wl_surface_commit(state->surface);
-	} else if (height > 0) {
+	} else if (state->height > 0) {
+            fprintf(stderr, "D\n");
 		// Replay recording into shm and send it off
 		state->current_buffer = get_next_buffer(state->shm,
 				state->buffers, state->width * scale, state->height * scale);
 		if (!state->current_buffer) {
+            fprintf(stderr, "ERR\n");
 			cairo_surface_destroy(recorder);
 			cairo_destroy(cairo);
 			return;
@@ -192,22 +198,22 @@ static void render_frame(struct wsk_state *state) {
 		wl_surface_attach(state->surface,
 				state->current_buffer->buffer, 0, 0);
 		wl_surface_damage_buffer(state->surface, 0, 0,
-				state->width, state->height);
+				INT32_MAX, INT32_MAX);
 		wl_surface_commit(state->surface);
-	}
+	} else {
+            fprintf(stderr, "W\n");
+    }
 }
 
 static void set_dirty(struct wsk_state *state) {
-	if (state->frame_scheduled) {
-		state->dirty = true;
-	} else if (state->surface) {
-		render_frame(state);
-	}
+		wl_surface_commit(state->surface);
+	render_frame(state);
 }
 
 static void layer_surface_configure(void *data,
 			struct zwlr_layer_surface_v1 *zwlr_layer_surface_v1,
 			uint32_t serial, uint32_t width, uint32_t height) {
+    fprintf(stderr, "C1\n");
 	struct wsk_state *state = data;
 	state->width = width;
 	state->height = height;
@@ -219,6 +225,7 @@ static void layer_surface_closed(void *data,
 		struct zwlr_layer_surface_v1 *zwlr_layer_surface_v1) {
 	struct wsk_state *state = data;
 	state->run = false;
+    fprintf(stderr, "CLOSE\n");
 }
 
 static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
